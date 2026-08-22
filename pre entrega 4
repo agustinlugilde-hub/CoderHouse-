@@ -1,0 +1,64 @@
+-- Consulta 1
+SELECT 
+	cat.nombre AS categoria,
+	COALESCE(SUM(v.cantidad), 0) AS unidades_vendidas,
+	COALESCE(SUM(v.cantidad * p.precio), 0) AS ingreso_total
+FROM categorias AS cat
+JOIN productos AS p
+	ON cat.id_categoria = p.id_categoria
+JOIN ventas AS v
+	ON p.id_producto = v.id_producto
+GROUP BY
+	cat.id_categoria,
+	cat.nombre
+HAVING
+	SUM(v.cantidad * p.precio) > 50000
+ORDER BY
+	ingreso_total DESC;
+
+
+-- Consulta 2
+SELECT
+	c.id_cliente,
+	c.nombre AS nombre_cliente,
+	c.email,
+	COALESCE(COUNT(v.id_venta), O) AS total_compras
+FROM cliente AS c
+LEFT JOIN ventas AS v
+	ON c.id_cliente = v.id_cliente
+WHERE
+	v.id_venta IS NULL
+GROUP BY 
+	c.id_cliente,
+	c.nombre,
+	c.email;
+
+-- Consulta 3
+WITH ranking_compras AS (
+    SELECT 
+        c.id_cliente,
+        c.nombre AS nombre_cliente,
+        p.nombre AS producto_mas_comprado,
+        MAX(v.fecha) AS ultima_transaccion,
+        SUM(v.cantidad) AS total_unidades,
+        ROW_NUMBER() OVER (
+            PARTITION BY c.id_cliente 
+            ORDER BY SUM(v.cantidad) DESC, MAX(v.fecha) DESC
+        ) AS posicion
+    FROM clientes AS c
+    JOIN ventas AS v 
+        ON c.id_cliente = v.id_cliente
+    JOIN productos AS p 
+        ON v.id_producto = p.id_producto
+    GROUP BY 
+        c.id_cliente, 
+        c.nombre, 
+        p.id_producto, 
+        p.nombre
+)
+SELECT 
+    nombre_cliente,
+    producto_mas_comprado,
+    ultima_transaccion
+FROM ranking_compras
+WHERE posicion = 1;
